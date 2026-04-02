@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Camera, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
@@ -17,37 +17,57 @@ export default function CameraScanner({ onCapture, isProcessing }: CameraScanner
 
   const startCamera = async () => {
     setError(null);
+    
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError("Your browser does not support camera access. Please try a modern browser like Chrome or Firefox.");
+      return;
+    }
+
     try {
+      // Check if any video input devices exist
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      if (videoDevices.length === 0) {
+        setError("No camera detected. Please connect a camera and try again.");
+        return;
+      }
+
       // Try environment camera first (back camera on mobile)
       let mediaStream: MediaStream;
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
           audio: false,
         });
       } catch (e) {
         console.warn("Failed with environment facingMode, trying default video", e);
-        // Fallback to any available camera
+        // Fallback to any available camera with minimal constraints
         mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: true, 
           audio: false 
         });
       }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        setStream(mediaStream);
-        setIsCameraActive(true);
-      }
+      setStream(mediaStream);
+      setIsCameraActive(true);
     } catch (err) {
       console.error("Error accessing camera:", err);
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setError("Camera permission denied. Please enable camera access in your browser settings.");
+          setError(
+            "Camera permission denied. Please click the camera icon in your browser's address bar to allow access, or try opening the app in a new tab."
+          );
         } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
           setError("No camera found on this device.");
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setError("Camera is already in use by another application.");
         } else {
-          setError("Error accessing camera. Please ensure no other app is using it and try again.");
+          setError(`Error: ${err.message}. Please ensure camera permissions are granted.`);
         }
       } else {
         setError("An unknown error occurred while accessing the camera.");
@@ -61,6 +81,22 @@ export default function CameraScanner({ onCapture, isProcessing }: CameraScanner
       setStream(null);
       setIsCameraActive(false);
     }
+  }, [stream]);
+
+  // Handle stream attachment to video element
+  useEffect(() => {
+    if (isCameraActive && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [isCameraActive, stream]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
   }, [stream]);
 
   const captureImage = () => {
