@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { motion, AnimatePresence } from 'motion/react';
+import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
 import { 
   BookOpen, 
   History, 
@@ -27,11 +28,14 @@ interface ScanHistory {
 }
 
 export default function App() {
-  const [view, setView] = useState<'landing' | 'tutor' | 'history'>('landing');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [language, setLanguage] = useState('English');
   const [history, setHistory] = useState<ScanHistory[]>([]);
+
+  const view = location.pathname === '/' ? 'landing' : location.pathname.slice(1);
 
   // Load history from localStorage
   useEffect(() => {
@@ -128,7 +132,7 @@ export default function App() {
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
           <button 
-            onClick={() => setView('tutor')}
+            onClick={() => navigate('/tutor')}
             className="w-full sm:w-auto px-8 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl font-bold shadow-xl shadow-amber-200 transition-all flex items-center justify-center gap-2 group"
           >
             Start Learning Now
@@ -200,8 +204,8 @@ export default function App() {
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-stone-200 px-6 py-4 sticky top-0 z-40 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <button 
-            onClick={() => setView('landing')}
+          <Link 
+            to="/"
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
             <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
@@ -211,32 +215,32 @@ export default function App() {
               <h1 className="text-xl font-bold text-stone-900 tracking-tight leading-none">Pradarshak</h1>
               <p className="text-[10px] uppercase tracking-widest text-amber-600 font-bold mt-1">The Visual Mentor</p>
             </div>
-          </button>
+          </Link>
           
           <nav className="hidden md:flex items-center gap-8">
-            <button 
-              onClick={() => setView('landing')}
+            <Link 
+              to="/"
               className={cn("text-sm font-bold transition-colors", view === 'landing' ? "text-amber-600" : "text-stone-500 hover:text-stone-900")}
             >
               Home
-            </button>
-            <button 
-              onClick={() => setView('tutor')}
+            </Link>
+            <Link 
+              to="/tutor"
               className={cn("text-sm font-bold transition-colors", view === 'tutor' ? "text-amber-600" : "text-stone-500 hover:text-stone-900")}
             >
               Tutor
-            </button>
-            <button 
-              onClick={() => setView('history')}
+            </Link>
+            <Link 
+              to="/history"
               className={cn("text-sm font-bold transition-colors", view === 'history' ? "text-amber-600" : "text-stone-500 hover:text-stone-900")}
             >
               History
-            </button>
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => setView(view === 'history' ? 'tutor' : 'history')}
+              onClick={() => navigate(view === 'history' ? '/tutor' : '/history')}
               className={cn(
                 "p-2.5 rounded-full transition-all",
                 view === 'history' ? "bg-amber-100 text-amber-600" : "text-stone-400 hover:bg-stone-100"
@@ -245,7 +249,7 @@ export default function App() {
               <History className="w-6 h-6" />
             </button>
             <button 
-              onClick={() => setView('tutor')}
+              onClick={() => navigate('/tutor')}
               className="md:hidden p-2.5 bg-amber-500 text-white rounded-full shadow-md active:scale-95 transition-transform"
             >
               <Sparkles className="w-5 h-5" />
@@ -256,162 +260,164 @@ export default function App() {
 
       <main className="flex-1 w-full max-w-5xl mx-auto px-6">
         <AnimatePresence mode="wait">
-          {view === 'landing' ? (
-            renderLanding()
-          ) : view === 'history' ? (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="max-w-2xl mx-auto py-12 space-y-8"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 rounded-lg">
-                    <History className="w-6 h-6 text-amber-600" />
-                  </div>
-                  Recent Learning
-                </h2>
-                {history.length > 0 && (
-                  <button 
-                    onClick={clearHistory}
-                    className="text-xs font-bold text-stone-400 hover:text-red-500 flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Clear All
-                  </button>
-                )}
-              </div>
-
-              {history.length === 0 ? (
-                <div className="bg-white rounded-[2rem] p-16 text-center border border-stone-100 shadow-sm">
-                  <div className="w-20 h-20 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <History className="w-10 h-10 text-stone-300" />
-                  </div>
-                  <h3 className="text-xl font-bold text-stone-800 mb-2">No scans yet</h3>
-                  <p className="text-stone-500 max-w-xs mx-auto">Start by scanning a book problem in the Tutor section!</p>
-                  <button 
-                    onClick={() => setView('tutor')}
-                    className="mt-8 px-6 py-3 bg-amber-500 text-white rounded-xl font-bold shadow-lg shadow-amber-100"
-                  >
-                    Go to Tutor
-                  </button>
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {history.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setExplanation(item.explanation);
-                        setLanguage(item.language);
-                        setView('tutor');
-                      }}
-                      className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all text-left group flex items-center justify-between"
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={renderLanding()} />
+            
+            <Route path="/history" element={
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="max-w-2xl mx-auto py-12 space-y-8"
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <History className="w-6 h-6 text-amber-600" />
+                    </div>
+                    Recent Learning
+                  </h2>
+                  {history.length > 0 && (
+                    <button 
+                      onClick={clearHistory}
+                      className="text-xs font-bold text-stone-400 hover:text-red-500 flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
                     >
-                      <div className="space-y-2">
-                        <h3 className="font-bold text-stone-900 group-hover:text-amber-600 transition-colors text-lg">
-                          {item.subject}
-                        </h3>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
-                            {item.language}
-                          </span>
-                          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                            {new Date(item.timestamp).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center group-hover:bg-amber-50 transition-colors">
-                        <ChevronRight className="w-5 h-5 text-stone-300 group-hover:text-amber-500 transition-colors" />
-                      </div>
+                      <Trash2 className="w-4 h-4" />
+                      Clear All
                     </button>
-                  ))}
+                  )}
                 </div>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="tutor"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="max-w-2xl mx-auto py-12 space-y-8"
-            >
-              {explanation ? (
-                <ExplanationCard 
-                  explanation={explanation} 
-                  language={language} 
-                  onBack={() => setExplanation(null)} 
-                />
-              ) : (
-                <div className="space-y-8">
-                  <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-bold text-stone-900">The Visual Tutor</h2>
-                    <p className="text-stone-500">Pick a language and scan your textbook</p>
-                  </div>
 
-                  {/* Language Selector */}
-                  <div className="bg-white p-2 rounded-2xl shadow-sm border border-stone-100 flex gap-1">
-                    {['English', 'Bengali', 'Nepali'].map((lang) => (
+                {history.length === 0 ? (
+                  <div className="bg-white rounded-[2rem] p-16 text-center border border-stone-100 shadow-sm">
+                    <div className="w-20 h-20 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <History className="w-10 h-10 text-stone-300" />
+                    </div>
+                    <h3 className="text-xl font-bold text-stone-800 mb-2">No scans yet</h3>
+                    <p className="text-stone-500 max-w-xs mx-auto">Start by scanning a book problem in the Tutor section!</p>
+                    <button 
+                      onClick={() => navigate('/tutor')}
+                      className="mt-8 px-6 py-3 bg-amber-500 text-white rounded-xl font-bold shadow-lg shadow-amber-100"
+                    >
+                      Go to Tutor
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {history.map((item) => (
                       <button
-                        key={lang}
-                        onClick={() => setLanguage(lang)}
-                        className={cn(
-                          "flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
-                          language === lang 
-                            ? "bg-amber-500 text-white shadow-lg scale-[1.02]" 
-                            : "text-stone-500 hover:bg-stone-50"
-                        )}
+                        key={item.id}
+                        onClick={() => {
+                          setExplanation(item.explanation);
+                          setLanguage(item.language);
+                          navigate('/tutor');
+                        }}
+                        className="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm hover:shadow-md hover:border-amber-200 transition-all text-left group flex items-center justify-between"
                       >
-                        <Languages className="w-4 h-4" />
-                        {lang}
+                        <div className="space-y-2">
+                          <h3 className="font-bold text-stone-900 group-hover:text-amber-600 transition-colors text-lg">
+                            {item.subject}
+                          </h3>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                              {item.language}
+                            </span>
+                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                              {new Date(item.timestamp).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center group-hover:bg-amber-50 transition-colors">
+                          <ChevronRight className="w-5 h-5 text-stone-300 group-hover:text-amber-500 transition-colors" />
+                        </div>
                       </button>
                     ))}
                   </div>
+                )}
+              </motion.div>
+            } />
 
-                  {/* Camera Section */}
-                  <div className="relative">
-                    <CameraScanner onCapture={handleCapture} isProcessing={isProcessing} />
-                    
-                    {isProcessing && (
-                      <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center text-white z-10">
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            <Route path="/tutor" element={
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="max-w-2xl mx-auto py-12 space-y-8"
+              >
+                {explanation ? (
+                  <ExplanationCard 
+                    explanation={explanation} 
+                    language={language} 
+                    onBack={() => setExplanation(null)} 
+                  />
+                ) : (
+                  <div className="space-y-8">
+                    <div className="text-center space-y-2">
+                      <h2 className="text-3xl font-bold text-stone-900">The Visual Tutor</h2>
+                      <p className="text-stone-500">Pick a language and scan your textbook</p>
+                    </div>
+
+                    {/* Language Selector */}
+                    <div className="bg-white p-2 rounded-2xl shadow-sm border border-stone-100 flex gap-1">
+                      {['English', 'Bengali', 'Nepali'].map((lang) => (
+                        <button
+                          key={lang}
+                          onClick={() => setLanguage(lang)}
+                          className={cn(
+                            "flex-1 py-3.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2",
+                            language === lang 
+                              ? "bg-amber-500 text-white shadow-lg scale-[1.02]" 
+                              : "text-stone-500 hover:bg-stone-50"
+                          )}
                         >
-                          <Loader2 className="w-12 h-12 text-amber-400" />
-                        </motion.div>
-                        <motion.p 
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-4 font-bold text-lg flex items-center gap-2"
-                        >
-                          <Sparkles className="w-5 h-5 text-amber-400" />
-                          Mentor is thinking...
-                        </motion.p>
-                        <p className="text-white/60 text-sm mt-1">Finding the best local metaphor</p>
+                          <Languages className="w-4 h-4" />
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Camera Section */}
+                    <div className="relative">
+                      <CameraScanner onCapture={handleCapture} isProcessing={isProcessing} />
+                      
+                      {isProcessing && (
+                        <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center text-white z-10">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                          >
+                            <Loader2 className="w-12 h-12 text-amber-400" />
+                          </motion.div>
+                          <motion.p 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-4 font-bold text-lg flex items-center gap-2"
+                          >
+                            <Sparkles className="w-5 h-5 text-amber-400" />
+                            Mentor is thinking...
+                          </motion.p>
+                          <p className="text-white/60 text-sm mt-1">Finding the best local metaphor</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info Section */}
+                    <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl flex gap-5">
+                      <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
+                        <Info className="w-6 h-6 text-emerald-600" />
                       </div>
-                    )}
-                  </div>
-
-                  {/* Info Section */}
-                  <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl flex gap-5">
-                    <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
-                      <Info className="w-6 h-6 text-emerald-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-emerald-900 mb-1">Quick Tip</h4>
-                      <p className="text-sm text-emerald-800/70 leading-relaxed">
-                        Point your camera at any diagram or math problem. Pradarshak will explain it using things you see around you every day, like mangoes, rivers, and sweets.
-                      </p>
+                      <div>
+                        <h4 className="font-bold text-emerald-900 mb-1">Quick Tip</h4>
+                        <p className="text-sm text-emerald-800/70 leading-relaxed">
+                          Point your camera at any diagram or math problem. Pradarshak will explain it using things you see around you every day, like mangoes, rivers, and sweets.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </motion.div>
-          )}
+                )}
+              </motion.div>
+            } />
+          </Routes>
         </AnimatePresence>
       </main>
 
@@ -419,16 +425,19 @@ export default function App() {
       <footer className="bg-white border-t border-stone-200 mt-20">
         <div className="max-w-5xl mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-3">
+            <Link 
+              to="/"
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
               <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center shadow-md">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <span className="font-bold text-stone-900">Pradarshak</span>
-            </div>
+            </Link>
             <div className="flex gap-8 text-sm font-bold text-stone-500">
-              <button onClick={() => setView('landing')} className="hover:text-amber-600">Home</button>
-              <button onClick={() => setView('tutor')} className="hover:text-amber-600">Tutor</button>
-              <button onClick={() => setView('history')} className="hover:text-amber-600">History</button>
+              <Link to="/" className="hover:text-amber-600">Home</Link>
+              <Link to="/tutor" className="hover:text-amber-600">Tutor</Link>
+              <Link to="/history" className="hover:text-amber-600">History</Link>
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-stone-100 text-center text-stone-400 text-xs">
