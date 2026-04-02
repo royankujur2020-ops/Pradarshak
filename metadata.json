@@ -1,6 +1,6 @@
 {
-  "name": "Remix: Pradarshak",
-  "description": "The Visual Mentor: An offline-first OCR tutor for rural students that explains textbook problems using local metaphors and languages.",
+  "name": "Pradarshak: The Visual Mentor",
+  "description": "An AI-powered educational platform for rural students. Scan textbook problems to get simple, localized explanations using familiar metaphors and languages.",
   "requestFramePermissions": [
     "camera"
   ]
