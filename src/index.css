@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Devanagari:wght@400;700&display=swap');
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-bengali: "Noto Sans Bengali", sans-serif;
+  --font-nepali: "Noto Sans Devanagari", sans-serif;
+  
+  --color-brand-primary: #d97706; /* amber-600 */
+  --color-brand-secondary: #059669; /* emerald-600 */
+  --color-brand-bg: #fef3c7; /* amber-100 */
+}
+
+@layer base {
+  body {
+    @apply bg-stone-50 text-stone-900 font-sans;
+  }
+}
+
+.markdown-body {
+  @apply prose prose-stone max-w-none;
+  @apply prose-headings:text-amber-900 prose-headings:font-bold;
+  @apply prose-p:text-stone-700 prose-p:leading-relaxed;
+}
+
