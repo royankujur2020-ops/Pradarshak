@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { motion, AnimatePresence } from 'motion/react';
 import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom';
@@ -10,11 +10,59 @@ import {
   Sparkles, 
   Info,
   ChevronRight,
-  Trash2
+  Trash2,
+  AlertTriangle,
+  RefreshCcw
 } from 'lucide-react';
 import CameraScanner from './components/CameraScanner';
 import ExplanationCard from './components/ExplanationCard';
 import { cn } from './lib/utils';
+
+// Error Boundary Component
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
+            <AlertTriangle className="w-10 h-10 text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">Something went wrong</h1>
+          <p className="text-stone-600 max-w-md mb-8">
+            The application encountered an unexpected error. Please try refreshing the page.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-3 bg-amber-600 text-white rounded-xl font-bold shadow-lg flex items-center gap-2"
+          >
+            <RefreshCcw className="w-5 h-5" />
+            Refresh Page
+          </button>
+          {process.env.NODE_ENV !== 'production' && (
+            <pre className="mt-8 p-4 bg-stone-200 rounded-lg text-left text-xs overflow-auto max-w-full">
+              {this.state.error?.toString()}
+            </pre>
+          )}
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Initialize Gemini
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -58,11 +106,49 @@ export default function App() {
   };
 
   const handleCapture = async (imageData: string) => {
+    if (!imageData) {
+      setExplanation("No image data received. Please try again.");
+      return;
+    }
+
     setIsProcessing(true);
     setExplanation(null);
 
     try {
-      const base64Data = imageData.split(',')[1];
+      let base64Data = "";
+      let mimeType = "image/jpeg";
+
+      if (imageData.startsWith('data:')) {
+        const parts = imageData.split(',');
+        if (parts.length < 2) {
+          throw new Error("Invalid image format");
+        }
+        base64Data = parts[1];
+        mimeType = parts[0].split(':')[1].split(';')[0] || "image/jpeg";
+      } else if (imageData.startsWith('http')) {
+        // Handle URL
+        try {
+          const response = await fetch(imageData);
+          const blob = await response.blob();
+          mimeType = blob.type;
+          
+          // Convert blob to base64
+          base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              resolve(result.split(',')[1]);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (urlErr) {
+          console.error("URL Fetch Error:", urlErr);
+          throw new Error("Could not fetch image from URL. This might be due to security restrictions (CORS). Please try uploading the file directly instead.");
+        }
+      } else {
+        throw new Error("Unsupported image source");
+      }
       
       const prompt = `
         You are "Pradarshak", a friendly AI tutor for rural students. 
@@ -83,13 +169,13 @@ export default function App() {
           {
             parts: [
               { text: prompt },
-              { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+              { inlineData: { data: base64Data, mimeType } }
             ]
           }
         ]
       });
 
-      const resultText = response.text || "I couldn't understand that. Please try scanning again with better light.";
+      const resultText = response.text?.trim() || "I couldn't understand that. Please try scanning again with better light or a clearer image.";
       setExplanation(resultText);
       
       // Extract a simple subject for history
@@ -106,7 +192,8 @@ export default function App() {
 
     } catch (error) {
       console.error("AI Error:", error);
-      setExplanation("Sorry, I'm having trouble connecting. Please check your internet or try again.");
+      const message = error instanceof Error ? error.message : "Sorry, I'm having trouble connecting or understanding the image.";
+      setExplanation(`${message} Please check your internet and try again with a clearer picture.`);
     } finally {
       setIsProcessing(false);
     }
@@ -200,7 +287,8 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col font-sans selection:bg-amber-200">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-stone-50 flex flex-col font-sans selection:bg-amber-200">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-stone-200 px-6 py-4 sticky top-0 z-40 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -449,5 +537,6 @@ export default function App() {
         </div>
       </footer>
     </div>
+    </ErrorBoundary>
   );
 }

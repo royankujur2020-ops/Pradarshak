@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'motion/react';
-import { BookOpen, Lightbulb, Languages, ArrowLeft } from 'lucide-react';
+import { BookOpen, Lightbulb, Languages, ArrowLeft, Camera } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
 interface ExplanationCardProps {
@@ -66,6 +66,14 @@ export default function ExplanationCard({ explanation, language, onBack }: Expla
               </p>
             </div>
           </div>
+          
+          <button
+            onClick={onBack}
+            className="w-full py-4 bg-stone-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-stone-800 transition-colors"
+          >
+            <Camera className="w-5 h-5" />
+            Scan Another Problem
+          </button>
         </div>
       </div>
     </motion.div>

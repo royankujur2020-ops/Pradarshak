@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, RefreshCw, X } from 'lucide-react';
+import { Camera, RefreshCw, X, Upload, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 
@@ -11,12 +11,16 @@ interface CameraScannerProps {
 export default function CameraScanner({ onCapture, isProcessing }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [url, setUrl] = useState('');
 
   const startCamera = async () => {
     setError(null);
+    setShowUrlInput(false);
     
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setError("Your browser does not support camera access. Please try a modern browser like Chrome or Firefox.");
@@ -29,7 +33,7 @@ export default function CameraScanner({ onCapture, isProcessing }: CameraScanner
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       
       if (videoDevices.length === 0) {
-        setError("No camera detected. Please connect a camera and try again.");
+        setError("No camera detected. Please connect a camera or use the upload/URL options.");
         return;
       }
 
@@ -60,7 +64,7 @@ export default function CameraScanner({ onCapture, isProcessing }: CameraScanner
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setError(
-            "Camera permission denied. Please click the camera icon in your browser's address bar to allow access, or try opening the app in a new tab."
+            "Camera permission denied. Please allow access or use the upload/URL options below."
           );
         } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
           setError("No camera found on this device.");
@@ -115,8 +119,43 @@ export default function CameraScanner({ onCapture, isProcessing }: CameraScanner
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const imageData = event.target?.result as string;
+        onCapture(imageData);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUrlSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!url.trim()) return;
+    
+    try {
+      // We can't easily convert a cross-origin URL to base64 in the browser due to CORS
+      // So we'll pass the URL directly and handle it in App.tsx
+      onCapture(url.trim());
+      setUrl('');
+      setShowUrlInput(false);
+    } catch (err) {
+      setError("Failed to process URL. Please try uploading a file instead.");
+    }
+  };
+
   return (
     <div className="relative w-full aspect-[4/3] bg-stone-900 rounded-2xl overflow-hidden shadow-2xl border-4 border-amber-200">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+        accept="image/*" 
+        className="hidden" 
+      />
+      
       <AnimatePresence mode="wait">
         {!isCameraActive ? (
           <motion.div
@@ -126,27 +165,88 @@ export default function CameraScanner({ onCapture, isProcessing }: CameraScanner
             exit={{ opacity: 0 }}
             className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center"
           >
-            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
-              <Camera className="w-10 h-10 text-amber-600" />
-            </div>
-            <h3 className="text-xl font-bold text-amber-50 mb-2">Scan Your Textbook</h3>
-            <p className="text-amber-200/80 text-sm mb-6 max-w-xs">
-              Point your camera at a diagram, math problem, or text to get a simple explanation.
-            </p>
-            
-            {error && (
-              <div className="mb-6 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-xs max-w-xs">
-                {error}
-              </div>
-            )}
+            {showUrlInput ? (
+              <motion.form 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onSubmit={handleUrlSubmit}
+                className="w-full max-w-xs space-y-4"
+              >
+                <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-2 shadow-inner">
+                  <LinkIcon className="w-8 h-8 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-bold text-amber-50">Paste Image URL</h3>
+                <input 
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlInput(false)}
+                    className="flex-1 px-4 py-2 bg-white/5 text-white rounded-xl font-bold hover:bg-white/10 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-400 transition-colors"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </motion.form>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                  <Camera className="w-10 h-10 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-bold text-amber-50 mb-2">Scan Your Textbook</h3>
+                <p className="text-amber-200/80 text-sm mb-6 max-w-xs">
+                  Point your camera at a diagram, math problem, or text to get a simple explanation.
+                </p>
+                
+                {error && (
+                  <div className="mb-6 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-xs max-w-xs">
+                    {error}
+                  </div>
+                )}
 
-            <button
-              onClick={startCamera}
-              disabled={isProcessing}
-              className="px-8 py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-full font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50"
-            >
-              {error ? "Try Again" : "Start Camera"}
-            </button>
+                <div className="flex flex-col gap-3 w-full max-w-xs">
+                  <button
+                    onClick={startCamera}
+                    disabled={isProcessing}
+                    className="w-full px-8 py-3 bg-amber-500 hover:bg-amber-400 text-white rounded-full font-bold shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <Camera className="w-5 h-5" />
+                    {error ? "Try Camera Again" : "Start Camera"}
+                  </button>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessing}
+                      className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-full font-bold transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Gallery
+                    </button>
+                    <button
+                      onClick={() => setShowUrlInput(true)}
+                      disabled={isProcessing}
+                      className="px-4 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-full font-bold transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                    >
+                      <LinkIcon className="w-4 h-4" />
+                      URL
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </motion.div>
         ) : (
           <motion.div
@@ -197,10 +297,13 @@ export default function CameraScanner({ onCapture, isProcessing }: CameraScanner
               </button>
 
               <button
-                onClick={startCamera}
+                onClick={() => {
+                  stopCamera();
+                  fileInputRef.current?.click();
+                }}
                 className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors"
               >
-                <RefreshCw className="w-6 h-6" />
+                <ImageIcon className="w-6 h-6" />
               </button>
             </div>
           </motion.div>
